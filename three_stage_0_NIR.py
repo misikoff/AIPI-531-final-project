@@ -3,7 +3,7 @@
 import time
 import numpy as np
 import json
-import openai
+from openai import OpenAI
 import random
 import argparse
 
@@ -39,8 +39,15 @@ data_ml_100k = read_json("./ml_100k.json")
 
 open_ai_keys = [args.api_key]
 open_ai_keys_index = 0
-openai.api_key = open_ai_keys[open_ai_keys_index]
 
+# client = OpenAI(
+#     api_key=open_ai_keys[open_ai_keys_index],
+#     api_key=open_ai_keys[open_ai_keys_index],
+#     api_key=open_ai_keys[open_ai_keys_index],
+#     api_key=open_ai_keys[open_ai_keys_index],
+# )
+
+client = OpenAI(api_key=open_ai_keys[open_ai_keys_index])
 
 u_item_dict = {}
 u_item_p = 0
@@ -220,6 +227,8 @@ Step 3: Can you recommend 10 movies from the Candidate Set similar to the select
 Answer: 
 """
 
+model = "gpt-3.5-turbo-instruct"
+
 count = 0
 total = 0
 results_data = []
@@ -240,8 +249,8 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
     kk_flag = 1
     while try_nums:
         try:
-            response = openai.Completion.create(
-                engine="text-davinci-003",
+            response = client.completions.create(
+                model=model,
                 prompt=input_1,
                 max_tokens=512,
                 temperature=0,
@@ -253,17 +262,16 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
             try_nums = 0
             kk_flag = 1
         except Exception as e:
-            if "exceeded your current quota" in str(e):
-                # open_ai_keys_index +=1
-                openai.api_key = open_ai_keys[open_ai_keys_index]
+            # if "exceeded your current quota" in str(e):
+            # open_ai_keys_index +=1
             time.sleep(1)
             try_nums = try_nums - 1
             kk_flag = 0
 
     if kk_flag == 0:
         time.sleep(5)
-        response = openai.Completion.create(
-            engine="text-davinci-003",
+        response = client.completions.create(
+            model=model,
             prompt=input_1,
             max_tokens=256,
             temperature=0,
@@ -273,7 +281,7 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
             n=1,
         )
 
-    predictions_1 = response["choices"][0]["text"]
+    predictions_1 = response.choices[0].text
 
     input_2 = temp_2.format(
         ", ".join(candidate_items), ", ".join(seq_list[-length_limit:]), predictions_1
@@ -283,8 +291,8 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
     kk_flag = 1
     while try_nums:
         try:
-            response = openai.Completion.create(
-                engine="text-davinci-003",
+            response = client.completions.create(
+                model=model,
                 prompt=input_2,
                 max_tokens=512,
                 temperature=0,
@@ -296,17 +304,16 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
             try_nums = 0
             kk_flag = 1
         except Exception as e:
-            if "exceeded your current quota" in str(e):
-                # open_ai_keys_index +=1
-                openai.api_key = open_ai_keys[open_ai_keys_index]
+            # if "exceeded your current quota" in str(e):
+            # open_ai_keys_index +=1
             time.sleep(1)
             try_nums = try_nums - 1
             kk_flag = 0
 
     if kk_flag == 0:
         time.sleep(5)
-        response = openai.Completion.create(
-            engine="text-davinci-003",
+        response = client.completions.create(
+            model=model,
             prompt=input_2,
             max_tokens=256,
             temperature=0,
@@ -316,7 +323,7 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
             n=1,
         )
 
-    predictions_2 = response["choices"][0]["text"]
+    predictions_2 = response.choices[0].text
 
     input_3 = temp_3.format(
         ", ".join(candidate_items),
@@ -329,8 +336,8 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
     kk_flag = 1
     while try_nums:
         try:
-            response = openai.Completion.create(
-                engine="text-davinci-003",
+            response = client.completions.create(
+                model=model,
                 prompt=input_3,
                 max_tokens=512,
                 temperature=0,
@@ -342,17 +349,16 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
             try_nums = 0
             kk_flag = 1
         except Exception as e:
-            if "exceeded your current quota" in str(e):
-                # open_ai_keys_index +=1
-                openai.api_key = open_ai_keys[open_ai_keys_index]
+            # if "exceeded your current quota" in str(e):
+            # open_ai_keys_index +=1
             time.sleep(1)
             try_nums = try_nums - 1
             kk_flag = 0
 
     if kk_flag == 0:
         time.sleep(5)
-        response = openai.Completion.create(
-            engine="text-davinci-003",
+        response = client.completions.create(
+            model=model,
             prompt=input_3,
             max_tokens=256,
             temperature=0,
@@ -362,7 +368,7 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
             n=1,
         )
 
-    predictions = response["choices"][0]["text"]
+    predictions = response.choices[0].text
 
     hit_ = 0
     if elem[1] in predictions:
