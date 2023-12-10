@@ -36,18 +36,7 @@ data_ml_100k = read_json("./ml_100k.json")
 # print (data_ml_100k[0][1])
 # print (len(data_ml_100k))
 
-
-open_ai_keys = [args.api_key]
-open_ai_keys_index = 0
-
-# client = OpenAI(
-#     api_key=open_ai_keys[open_ai_keys_index],
-#     api_key=open_ai_keys[open_ai_keys_index],
-#     api_key=open_ai_keys[open_ai_keys_index],
-#     api_key=open_ai_keys[open_ai_keys_index],
-# )
-
-client = OpenAI(api_key=open_ai_keys[open_ai_keys_index])
+client = OpenAI(api_key=args.api_key)
 
 u_item_dict = {}
 u_item_p = 0
@@ -262,8 +251,6 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
             try_nums = 0
             kk_flag = 1
         except Exception as e:
-            # if "exceeded your current quota" in str(e):
-            # open_ai_keys_index +=1
             time.sleep(1)
             try_nums = try_nums - 1
             kk_flag = 0
@@ -304,8 +291,6 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
             try_nums = 0
             kk_flag = 1
         except Exception as e:
-            # if "exceeded your current quota" in str(e):
-            # open_ai_keys_index +=1
             time.sleep(1)
             try_nums = try_nums - 1
             kk_flag = 0
@@ -349,8 +334,6 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
             try_nums = 0
             kk_flag = 1
         except Exception as e:
-            # if "exceeded your current quota" in str(e):
-            # open_ai_keys_index +=1
             time.sleep(1)
             try_nums = try_nums - 1
             kk_flag = 0
