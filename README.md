@@ -8,6 +8,8 @@ Use a LLM recommender to recommend films to users. Compare the LLM recommendatio
 
 ## Data
 
+We use the MovieLens_100K data set. 
+
 ## Baseline recommender
 
 The baseline recommender is a recommender with a statitic recommendation: always recommends the "most popular film". Originally, to obtain the most popular film we thought it best to pick the film that was most watched among the users in the dataset. However, the resulting film, "The English Patient", actually never corresponds to the Ground Truth.
