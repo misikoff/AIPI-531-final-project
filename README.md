@@ -46,9 +46,10 @@ Our best method is reflected in the `recommender.py` file by default. If the use
 # Set-Up
 
 ## .py file
+Note: The first option listed is the default.
 
 ```bash
-$ python recommender.py --features=<False | True> --api_key <api_key> --use_cache=<False | True> --create_cache=<False | True> --verbose=<False | True>
+$ python recommender.py --prompt=<simple | chain_of_thought | features> --api_key <api_key> --use_cache=<False | True> --create_cache=<False | True> --verbose=<False | True>
 ```
 
 ## Notebook
