@@ -10,6 +10,10 @@ Use a LLM recommender to recommend films to users. Compare the LLM recommendatio
 
 We use the MovieLens_100K data set. 
 
+## LLM
+
+We use Open AI's LLM to generate the recommendations. The user needs to create his/her own API key. See the following link: <https://platform.openai.com/api-keys>
+
 ## Baseline recommender
 
 The baseline recommender is a recommender with a statistic recommendation: always recommends the "most popular film". Originally, to obtain the most popular film we thought it best to pick the film that was most watched among the users in the dataset. However, the resulting film, "The English Patient", actually never corresponds to the Ground Truth.
@@ -37,15 +41,17 @@ Unfortunately, adding this explicity set of information actually makes the HR sl
 
 ## Instructions
 
-Our best method is reflected in the `recommender.py` file. This method and others are available within the `recommenders.ipynb` notebook.
+Our best method is reflected in the `recommender.py` file by default. If the user wishes to include item features as described above, he/she just needs to change the argument `feature` to `True`. The exploration of both methods, and the baasline recommendar, can be found within the `recommenders.ipynb` notebook.
 
-# .py file
+# Set-Up
+
+## .py file
 
 ```bash
-$ python three_stage_0_NIR.py --api_key <api_key> --use_cache=<False | True> --create_cache=<False | True> --verbose=<False | True>
+$ python recommender.py --features=<False | True> --api_key <api_key> --use_cache=<False | True> --create_cache=<False | True> --verbose=<False | True>
 ```
 
-# Notebook
+## Notebook
 1. Set up environement variables
 
     ```bash
