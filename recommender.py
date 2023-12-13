@@ -199,15 +199,15 @@ print("-----------------\n")
 model = "gpt-3.5-turbo-instruct"
 
 # if .cache directory does not exist create it
-if not os.path.exists("./.cache"):
+if (args.use_cache or args.create_cache) and not os.path.exists("./.cache"):
     os.makedirs("./.cache")
 
 
-def get_response(input, use_cache=True, create_cache=True):
+def get_response(input):
     hashed_name = hashlib.md5((model + "-" + input).encode("utf-8")).hexdigest()
     cache_file = f"./.cache/{hashed_name}"
 
-    if use_cache and os.path.exists(cache_file):
+    if args.use_cache and os.path.exists(cache_file):
         if args.verbose:
             print(f"Using cache for {input}")
         with open(cache_file) as f:
@@ -247,7 +247,7 @@ def get_response(input, use_cache=True, create_cache=True):
                 n=1,
             )
         response_text = response.choices[0].text
-        if create_cache:
+        if args.create_cache:
             if args.verbose:
                 print(f"Creating cache for {input}")
             with open(cache_file, "w") as f:
@@ -255,82 +255,34 @@ def get_response(input, use_cache=True, create_cache=True):
 
     return response_text
 
-# If not including film features (default) 
-if features is False:
-    
-    def get_prompt(candidate_items, seq_list):
-        # prompt = """
-        #     Do not print results for step 1 or 2. Think in your head. Only print the results of step 3.
-        #     Candidate Set (candidate movies): {}.
-        #     The movies I have watched (watched movies): {}.
-        #     Step 1: Think about what features may be most important to me when selecting movies.
-        #     Step 2: Select the most featured movies (at most 5 movies) from the watched movies according to my preferences in descending order (Format: [no. a watched movie.]).
-        #     Step 3: Recommend 10 movies from the Candidate Set similar to the selected movies I've watched (Format: [no. a watched movie - a candidate movie]).
-        # """.format(
-        #     ", ".join(candidate_items),
-        #     ", ".join(seq_list),
-        # )
 
-        # current best: 0.54 HR@10
-        prompt = """
-            Candidate Set (candidate movies): {}.
-            The movies I have watched (watched movies): {}.
-            Recommend 10 movies from the Candidate Set similar to the movies I've watched (Format: [no. a watched movie - a candidate movie]).
-        """.format(
-            ", ".join(candidate_items),
-            ", ".join(seq_list),
-        )
+def get_prompt(candidate_items, seq_list):
+    # prompt = """
+    #     Do not print results for step 1 or 2. Think in your head. Only print the results of step 3.
+    #     Candidate Set (candidate movies): {}.
+    #     The movies I have watched (watched movies): {}.
+    #     Step 1: Think about what features may be most important to me when selecting movies.
+    #     Step 2: Select the most featured movies (at most 5 movies) from the watched movies according to my preferences in descending order (Format: [no. a watched movie.]).
+    #     Step 3: Recommend 10 movies from the Candidate Set similar to the selected movies I've watched (Format: [no. a watched movie - a candidate movie]).
+    # """.format(
+    #     ", ".join(candidate_items),
+    #     ", ".join(seq_list),
+    # )
 
-        return prompt
+    # current best: 0.54 HR@10
+    prompt = """
+        Candidate Set (candidate movies): {}.
+        The movies I have watched (watched movies): {}.
+        Recommend 10 movies from the Candidate Set similar to the movies I've watched (Format: [no. a watched movie - a candidate movie]).
+    """.format(
+        ", ".join(candidate_items),
+        ", ".join(seq_list),
+    )
+
+    return prompt
 
 
-    count = 0
-    total = 0
-    results_data = []
-    for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
-        elem = data_ml_100k[i]
-        seq_list = elem[0].split(" | ")[::-1]
-
-        candidate_items = sort_uf_items(
-            seq_list, user_matrix_sim[i], num_u=num_u, num_i=total_i
-        )
-
-        # choosing not to shuffle for now as that breaks the cache
-        # random.shuffle(candidate_items)
-
-        input = get_prompt(candidate_items, seq_list[-length_limit:])
-
-        predictions = get_response(input, args.use_cache, args.create_cache)
-
-        hit_ = 0
-        if elem[1] in predictions:
-            count += 1
-            hit_ = 1
-        else:
-            pass
-        total += 1
-
-        if args.verbose:
-            print(f"GT:{elem[1]}")
-            print(f"predictions:{predictions}")
-
-        # print (f"GT:{elem[-1]}")
-        print(f"PID:{i}; count/total:{count}/{total}={count*1.0/total}\n")
-        result_json = {
-            "PID": i,
-            "Input": input,
-            "GT": elem[1],
-            "Predictions": predictions,
-            "Hit": hit_,
-            "Count": count,
-            "Current_total": total,
-            "Hit@10": count * 1.0 / total,
-        }
-        results_data.append(result_json)
-
-# if we want to include features
-else:
-    
+if features:
     # Define the column names based on the description
     column_names = [
         "movie_id",
@@ -360,17 +312,15 @@ else:
     ]
 
     # Read the data from the file into a DataFrame
-    df = pd.read_csv("./ml-100k/u.item", sep="|", names=column_names, encoding="latin-1")
+    movie_df = pd.read_csv(
+        "./ml-100k/u.item", sep="|", names=column_names, encoding="latin-1"
+    )
 
     # Remove the last 7 characters from the movie_title column
-    df["movie_title"] = df["movie_title"].str[:-7]
-
+    movie_df["movie_title"] = movie_df["movie_title"].str[:-7]
 
     # Extract the last 4 characters from the release_date column
-    df["release_date"] = df["release_date"].str[-4:]
-
-    # Display the first few rows of the updated DataFrame
-    # print(df.head())
+    movie_df["release_date"] = movie_df["release_date"].str[-4:]
 
     # Create an empty dictionary to store movie titles and genres
     movie_genre_dict = {}
@@ -378,7 +328,7 @@ else:
     movie_year_dict = {}
 
     # Iterate through rows in the DataFrame
-    for index, row in df.iterrows():
+    for index, row in movie_df.iterrows():
         # Extract movie title, genres and release year
         movie_title = row["movie_title"]
         genres = [
@@ -394,80 +344,88 @@ else:
         movie_genre_dict[movie_title] = genres
         movie_year_dict[movie_title] = release_year
 
-        
-    def get_prompt_features(candidate_items, seq_list, movie_year_dict, movie_genre_dict):
-        # Format candidate movies with release year and genres
-        formatted_candidate_movies = [
-            "{} ({}, {})".format(
-                movie,
-                movie_year_dict.get(movie),
-                ", ".join(movie_genre_dict.get(movie, [])),
-            )
-            for movie in candidate_items
-        ]
 
-        # Format watched movies with release year and genres
-        formatted_watched_movies = [
-            "{} ({}, {})".format(
-                movie,
-                movie_year_dict.get(movie),
-                ", ".join(movie_genre_dict.get(movie, [])),
-            )
-            for movie in seq_list
-        ]
-
-        prompt = """
-            Candidate Set (candidate movies with release year and genres): {}.
-            The movies I have watched (watched movies with release year and genres): {}.
-            Recommend 10 movies from the Candidate Set similar to the movies I've watched (Format: [no. a watched movie - a candidate movie]).
-        """.format(
-            ", ".join(formatted_candidate_movies),
-            ", ".join(formatted_watched_movies),
+def get_prompt_features(candidate_items, seq_list, movie_year_dict, movie_genre_dict):
+    # Format candidate movies with release year and genres
+    formatted_candidate_movies = [
+        "{} ({}, {})".format(
+            movie,
+            movie_year_dict.get(movie),
+            ", ".join(movie_genre_dict.get(movie, [])),
         )
+        for movie in candidate_items
+    ]
 
-        return prompt
-
-    count = 0
-    total = 0
-    results_data = []
-    for i in cand_ids[:]:  
-        elem = data_ml_100k[i]
-        seq_list = elem[0].split(" | ")[::-1]
-
-        candidate_items = sort_uf_items(
-            seq_list, user_matrix_sim[i], num_u=num_u, num_i=total_i
+    # Format watched movies with release year and genres
+    formatted_watched_movies = [
+        "{} ({}, {})".format(
+            movie,
+            movie_year_dict.get(movie),
+            ", ".join(movie_genre_dict.get(movie, [])),
         )
+        for movie in seq_list
+    ]
 
+    prompt = """
+        Candidate Set (candidate movies with release year and genres): {}.
+        The movies I have watched (watched movies with release year and genres): {}.
+        Recommend 10 movies from the Candidate Set similar to the movies I've watched (Format: [no. a watched movie - a candidate movie]).
+    """.format(
+        ", ".join(formatted_candidate_movies),
+        ", ".join(formatted_watched_movies),
+    )
+
+    return prompt
+
+
+count = 0
+total = 0
+results_data = []
+for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
+    elem = data_ml_100k[i]
+    seq_list = elem[0].split(" | ")[::-1]
+
+    candidate_items = sort_uf_items(
+        seq_list, user_matrix_sim[i], num_u=num_u, num_i=total_i
+    )
+
+    # choosing not to shuffle for now as that breaks the cache
+    # random.shuffle(candidate_items)
+    if features:
         input = get_prompt_features(
             candidate_items, seq_list[-length_limit:], movie_year_dict, movie_genre_dict
         )
-        predictions = get_response(input)
+    else:
+        input = get_prompt(candidate_items, seq_list[-length_limit:])
 
-        hit_ = 0
-        if elem[1] in predictions:
-            count += 1
-            hit_ = 1
-        else:
-            pass
-        total += 1
+    predictions = get_response(input)
 
+    hit_ = 0
+    if elem[1] in predictions:
+        count += 1
+        hit_ = 1
+    else:
+        pass
+    total += 1
+
+    if args.verbose:
         print(f"GT:{elem[1]}")
         print(f"predictions:{predictions}")
 
-        # print (f"GT:{elem[-1]}")
-        print(f"PID:{i}; count/total:{count}/{total}={count*1.0/total}\n")
-        result_json = {
-            "PID": i,
-            "Input_4": input,
-            "GT": elem[1],
-            "Predictions": predictions,
-            "Hit": hit_,
-            "Count": count,
-            "Current_total": total,
-            "Hit@10": count * 1.0 / total,
-        }
-        results_data.append(result_json)
-        
+    # print (f"GT:{elem[-1]}")
+    print(f"PID:{i}; count/total:{count}/{total}={count*1.0/total}\n")
+    result_json = {
+        "PID": i,
+        "Input": input,
+        "GT": elem[1],
+        "Predictions": predictions,
+        "Hit": hit_,
+        "Count": count,
+        "Current_total": total,
+        "Hit@10": count * 1.0 / total,
+    }
+    results_data.append(result_json)
+
 file_dir = (
     f"./results_multi_prompting_len{length_limit}_numcand_{total_i}_seed{rseed}.json"
 )
