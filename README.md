@@ -12,13 +12,15 @@ We use the MovieLens_100K data set.
 
 ## Baseline recommender
 
-The baseline recommender is a recommender with a statitic recommendation: always recommends the "most popular film". Originally, to obtain the most popular film we thought it best to pick the film that was most watched among the users in the dataset. However, the resulting film, "The English Patient", actually never corresponds to the Ground Truth.
+The baseline recommender is a recommender with a statistic recommendation: always recommends the "most popular film". Originally, to obtain the most popular film we thought it best to pick the film that was most watched among the users in the dataset. However, the resulting film, "The English Patient", actually never corresponds to the Ground Truth.
 
 Instead, what we opted was to use outside knowledge to hand-pick our baseline film recommendation. The dataset was put together on 1998. At that moment, the highest grossing film, by far, was "Titanic" (1997). Recommending that film always results in a HR of 2/170 = 0.01 (it was actually the ground truth 2 times of out 170).
 
-## Zero-Shot Next-Item Recommendation
+## Zero-Shot Next-Item Recommendation + Chain of Thought (CoT) Prompting
 
-Explanation + how we made it more efficient
+The original algorithm layered multiple prompts together to produce a final prompt. This meant three requests were made for each recommendation. By combining the prompts into one with multiple steps and instructing the LLM to "think in your head" and only print the results of the final step, we were able to reduce the number of requests to one per recommendation. Additionally this change greatly reduced the number of tokens used per recommendation -- an important metric, given the API charges for tokens received and sent. 
+
+Ultimately we simplified the prompt further and yielded similar hit-rates to the original method. With this method we achieved a HR@10 of 92/170 = 0.54. 
 
 ## Zero-Shot Next-Item Recommendation + Item Features
 
@@ -35,10 +37,12 @@ Unfortunately, adding this explicity set of information actually makes the HR sl
 
 ## Instructions
 
+Our best method is reflected in the `three_stage_0_NIR.py` file. This method and others are available within the `three_stage_0_NIR.ipynb` notebook.
+
 # .py file
 
 ```bash
-$ python three_stage_0_NIR.py --api_key <api_key>
+$ python three_stage_0_NIR.py --api_key <api_key> --use_cache=<False | True> --create_cache=<False | True> --verbose=<False | True>
 ```
 
 # Notebook

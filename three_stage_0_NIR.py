@@ -1,11 +1,13 @@
 # !pip install openai
 
+import os
 import time
 import numpy as np
 import json
 from openai import OpenAI
 import random
 import argparse
+import hashlib
 
 parser = argparse.ArgumentParser()
 
@@ -13,6 +15,9 @@ parser.add_argument("--length_limit", type=int, default=8, help="")
 parser.add_argument("--num_cand", type=int, default=19, help="")
 parser.add_argument("--random_seed", type=int, default=2023, help="")
 parser.add_argument("--api_key", type=str, default="sk-", help="")
+parser.add_argument("--use_cache", type=bool, default=False, help="")
+parser.add_argument("--create_cache", type=bool, default=False, help="")
+parser.add_argument("--verbose", type=bool, default=False, help="")
 
 args = parser.parse_args()
 
@@ -188,35 +193,91 @@ for i in id_list[:1000]:
 print(f"count/total:{count}/{total}={count*1.0/total}")
 print("-----------------\n")
 
-
-temp_1 = """
-Candidate Set (candidate movies): {}.
-The movies I have watched (watched movies): {}.
-Step 1: What features are most important to me when selecting movies (Summarize my preferences briefly)? 
-Answer: 
-"""
-
-temp_2 = """
-Candidate Set (candidate movies): {}.
-The movies I have watched (watched movies): {}.
-Step 1: What features are most important to me when selecting movies (Summarize my preferences briefly)? 
-Answer: {}.
-Step 2: Selecting the most featured movies from the watched movies according to my preferences (Format: [no. a watched movie.]). 
-Answer: 
-"""
-
-temp_3 = """
-Candidate Set (candidate movies): {}.
-The movies I have watched (watched movies): {}.
-Step 1: What features are most important to me when selecting movies (Summarize my preferences briefly)? 
-Answer: {}.
-Step 2: Selecting the most featured movies (at most 5 movies) from the watched movies according to my preferences in descending order (Format: [no. a watched movie.]). 
-Answer: {}.
-Step 3: Can you recommend 10 movies from the Candidate Set similar to the selected movies I've watched (Format: [no. a watched movie - a candidate movie])?.
-Answer: 
-"""
-
 model = "gpt-3.5-turbo-instruct"
+
+# if .cache directory does not exist create it
+if not os.path.exists("./.cache"):
+    os.makedirs("./.cache")
+
+
+def get_response(input, use_cache=True, create_cache=True):
+    hashed_name = hashlib.md5((model + "-" + input).encode("utf-8")).hexdigest()
+    cache_file = f"./.cache/{hashed_name}"
+
+    if use_cache and os.path.exists(cache_file):
+        if args.verbose:
+            print(f"Using cache for {input}")
+        with open(cache_file) as f:
+            response_text = f.read()
+    else:
+        try_nums = 5
+        kk_flag = 1
+        while try_nums:
+            try:
+                response = client.completions.create(
+                    model=model,
+                    prompt=input,
+                    max_tokens=512,
+                    temperature=0,
+                    top_p=1,
+                    frequency_penalty=0,
+                    presence_penalty=0,
+                    n=1,
+                )
+                try_nums = 0
+                kk_flag = 1
+            except Exception as e:
+                time.sleep(1)
+                try_nums = try_nums - 1
+                kk_flag = 0
+
+        if kk_flag == 0:
+            time.sleep(5)
+            response = client.completions.create(
+                model=model,
+                prompt=input,
+                max_tokens=256,
+                temperature=0,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+                n=1,
+            )
+        response_text = response.choices[0].text
+        if create_cache:
+            if args.verbose:
+                print(f"Creating cache for {input}")
+            with open(cache_file, "w") as f:
+                f.write(response_text)
+
+    return response_text
+
+
+def get_prompt(candidate_items, seq_list):
+    # prompt = """
+    #     Do not print results for step 1 or 2. Think in your head. Only print the results of step 3.
+    #     Candidate Set (candidate movies): {}.
+    #     The movies I have watched (watched movies): {}.
+    #     Step 1: Think about what features may be most important to me when selecting movies.
+    #     Step 2: Select the most featured movies (at most 5 movies) from the watched movies according to my preferences in descending order (Format: [no. a watched movie.]).
+    #     Step 3: Recommend 10 movies from the Candidate Set similar to the selected movies I've watched (Format: [no. a watched movie - a candidate movie]).
+    # """.format(
+    #     ", ".join(candidate_items),
+    #     ", ".join(seq_list),
+    # )
+
+    # current best: 0.54 HR@10
+    prompt = """
+        Candidate Set (candidate movies): {}.
+        The movies I have watched (watched movies): {}.
+        Recommend 10 movies from the Candidate Set similar to the movies I've watched (Format: [no. a watched movie - a candidate movie]).
+    """.format(
+        ", ".join(candidate_items),
+        ", ".join(seq_list),
+    )
+
+    return prompt
+
 
 count = 0
 total = 0
@@ -228,130 +289,13 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
     candidate_items = sort_uf_items(
         seq_list, user_matrix_sim[i], num_u=num_u, num_i=total_i
     )
-    random.shuffle(candidate_items)
 
-    input_1 = temp_1.format(
-        ", ".join(candidate_items), ", ".join(seq_list[-length_limit:])
-    )
+    # choosing not to shuffle for now as that breaks the cache
+    # random.shuffle(candidate_items)
 
-    try_nums = 5
-    kk_flag = 1
-    while try_nums:
-        try:
-            response = client.completions.create(
-                model=model,
-                prompt=input_1,
-                max_tokens=512,
-                temperature=0,
-                top_p=1,
-                frequency_penalty=0,
-                presence_penalty=0,
-                n=1,
-            )
-            try_nums = 0
-            kk_flag = 1
-        except Exception as e:
-            time.sleep(1)
-            try_nums = try_nums - 1
-            kk_flag = 0
+    input = get_prompt(candidate_items, seq_list[-length_limit:])
 
-    if kk_flag == 0:
-        time.sleep(5)
-        response = client.completions.create(
-            model=model,
-            prompt=input_1,
-            max_tokens=256,
-            temperature=0,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-            n=1,
-        )
-
-    predictions_1 = response.choices[0].text
-
-    input_2 = temp_2.format(
-        ", ".join(candidate_items), ", ".join(seq_list[-length_limit:]), predictions_1
-    )
-
-    try_nums = 5
-    kk_flag = 1
-    while try_nums:
-        try:
-            response = client.completions.create(
-                model=model,
-                prompt=input_2,
-                max_tokens=512,
-                temperature=0,
-                top_p=1,
-                frequency_penalty=0,
-                presence_penalty=0,
-                n=1,
-            )
-            try_nums = 0
-            kk_flag = 1
-        except Exception as e:
-            time.sleep(1)
-            try_nums = try_nums - 1
-            kk_flag = 0
-
-    if kk_flag == 0:
-        time.sleep(5)
-        response = client.completions.create(
-            model=model,
-            prompt=input_2,
-            max_tokens=256,
-            temperature=0,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-            n=1,
-        )
-
-    predictions_2 = response.choices[0].text
-
-    input_3 = temp_3.format(
-        ", ".join(candidate_items),
-        ", ".join(seq_list[-length_limit:]),
-        predictions_1,
-        predictions_2,
-    )
-
-    try_nums = 5
-    kk_flag = 1
-    while try_nums:
-        try:
-            response = client.completions.create(
-                model=model,
-                prompt=input_3,
-                max_tokens=512,
-                temperature=0,
-                top_p=1,
-                frequency_penalty=0,
-                presence_penalty=0,
-                n=1,
-            )
-            try_nums = 0
-            kk_flag = 1
-        except Exception as e:
-            time.sleep(1)
-            try_nums = try_nums - 1
-            kk_flag = 0
-
-    if kk_flag == 0:
-        time.sleep(5)
-        response = client.completions.create(
-            model=model,
-            prompt=input_3,
-            max_tokens=256,
-            temperature=0,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-            n=1,
-        )
-
-    predictions = response.choices[0].text
+    predictions = get_response(input, args.use_cache, args.create_cache)
 
     hit_ = 0
     if elem[1] in predictions:
@@ -361,24 +305,16 @@ for i in cand_ids[:]:  # [:10] + cand_ids[49:57] + cand_ids[75:81]:
         pass
     total += 1
 
-    # print (f"input_1:{input_1}")
-    # print (f"predictions_1:{predictions_1}\n")
-    # print (f"input_2:{input_2}")
-    # print (f"predictions_2:{predictions_2}\n")
-    # print (f"input_3:{input_3}")
-    print(f"GT:{elem[1]}")
-    print(f"predictions:{predictions}")
+    if args.verbose:
+        print(f"GT:{elem[1]}")
+        print(f"predictions:{predictions}")
 
     # print (f"GT:{elem[-1]}")
     print(f"PID:{i}; count/total:{count}/{total}={count*1.0/total}\n")
     result_json = {
         "PID": i,
-        "Input_1": input_1,
-        "Input_2": input_2,
-        "Input_3": input_3,
+        "Input": input,
         "GT": elem[1],
-        "Predictions_1": predictions_1,
-        "Predictions_2": predictions_2,
         "Predictions": predictions,
         "Hit": hit_,
         "Count": count,
