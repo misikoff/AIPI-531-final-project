@@ -37,7 +37,7 @@ Unfortunately, adding this explicity set of information actually makes the HR sl
 
 ## Instructions
 
-Our best method is reflected in the `three_stage_0_NIR.py` file. This method and others are available within the `three_stage_0_NIR.ipynb` notebook.
+Our best method is reflected in the `recommender.py` file. This method and others are available within the `recommenders.ipynb` notebook.
 
 # .py file
 
