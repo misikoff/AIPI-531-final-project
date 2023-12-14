@@ -35,13 +35,13 @@ Information about the items (movies); this is a tab separated list of movie id |
 After creating dictionaries summarizing this information, we create a new prompt function: `get_prompt_features()`. The difference with the original `get_prompt()` is that next to each film, we include a parenthesis with the year and its genres. For example, the new prompt would look like this:
 
 *Candidate Set (candidate movies with release year and genres): Die Hard 2 (1990, Action, Thriller), Stargate (1994, Action, Adventure, Sci-Fi), The Crow (None, ), GoldenEye (1995, Action, Adventure, Thriller), Clear and Present Danger (1994, Action, Adventure, Thriller), Waterworld (1995, Action, Adventure), Batman Forever (1995, Action, Adventure, Comedy, Crime), First Knight (1995, Action, Adventure, Drama, Romance), Terminal Velocity (1994, Action), Natural Born Killers (1994, Action, Thriller), Highlander (1986, Action, Adventure), Independence Day (ID4) (1996, Action, Sci-Fi, War), Star Trek IV: The Voyage Home (1986, Action, Adventure, Sci-Fi), Young Guns (1988, Action, Comedy, Western), Days of Thunder (1990, Action, Romance), The Shadow (None, ), In the Line of Fire (1993, Action, Thriller), Under Siege 2: Dark Territory (1995, Action), Money Train (1995, Action).
-The movies I have watched (watched movies with release year and genres): Happy Gilmore (1996, Comedy), Boomerang (1992, Comedy, Romance), Made in America (1993, Comedy), Grease 2 (1982, Comedy, Musical, Romance), Michael (1996, Comedy, Romance), City Slickers II: The Legend of Curly's Gold (1994, Comedy, Western), Beverly Hills Cop III (1994, Action, Comedy), Grumpier Old Men (1995, Comedy, Romance
+The movies I have watched (watched movies with release year and genres): Happy Gilmore (1996, Comedy), Boomerang (1992, Comedy, Romance), Made in America (1993, Comedy), Grease 2 (1982, Comedy, Musical, Romance), Michael (1996, Comedy, Romance), City Slickers II: The Legend of Curly's Gold (1994, Comedy, Western), Beverly Hills Cop III (1994, Action, Comedy), Grumpier Old Men (1995, Comedy, Romance)
 
-Unfortunately, adding this explicity set of information actually makes the HR slightly worse: 80/170=0.47. The reason might be that the LLM is taking too much into account the explicit genres instead of taking a more holistic appoach to the similarities between films. 
+Unfortunately, adding this explicit set of information actually makes the HR slightly worse: 80/170=0.47. The reason might be that the LLM is taking too much into account the explicit genres instead of taking a more holistic appoach to the similarities between films. 
 
 ## Instructions
 
-Our best method is reflected in the `recommender.py` file by default. If the user wishes to include item features as described above, he/she just needs to change the argument `feature` to `True`. The exploration of both methods, and the baasline recommendar, can be found within the `recommenders.ipynb` notebook.
+Our best method is reflected in the `recommender.py` file by default. If the user wishes to include chain of thought reasoning or item features as described above, he/she only needs to change the `prompt` argument to `chain_of_thought` or `features`. The exploration of all three these methods, and the baseline recommender, can be found within the `recommenders.ipynb` notebook.
 
 # Set-Up
 
